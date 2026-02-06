@@ -1,0 +1,26 @@
+-- 教练信息表
+CREATE TABLE IF NOT EXISTS `ski_coach_info` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '教练信息ID',
+  `user_id` bigint(20) NOT NULL COMMENT '用户ID（关联sys_user表）',
+  `coach_level` varchar(20) DEFAULT '初级' COMMENT '教练等级（初级、中级、高级、专业）',
+  `teaching_years` int(11) DEFAULT 0 COMMENT '教学年限',
+  `specialty` varchar(200) DEFAULT NULL COMMENT '擅长领域（如：单板、双板、儿童教学等）',
+  `certificate` varchar(500) DEFAULT NULL COMMENT '专业证书（JSON格式存储证书信息）',
+  `introduction` text COMMENT '个人简介',
+  `hourly_rate` decimal(10,2) DEFAULT NULL COMMENT '课时费（元/小时）',
+  `total_students` int(11) DEFAULT 0 COMMENT '累计学员数',
+  `current_students` int(11) DEFAULT 0 COMMENT '当前学员数',
+  `total_teaching_hours` int(11) DEFAULT 0 COMMENT '累计教学时长（小时）',
+  `average_rating` decimal(3,2) DEFAULT 0.00 COMMENT '平均评分（0-5分）',
+  `rating_count` int(11) DEFAULT 0 COMMENT '评价数量',
+  `status` varchar(20) DEFAULT '0' COMMENT '状态（0正常 1停用）',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建者',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_id` (`user_id`),
+  KEY `idx_coach_level` (`coach_level`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='教练信息表';
