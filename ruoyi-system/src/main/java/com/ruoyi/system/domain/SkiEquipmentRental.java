@@ -10,6 +10,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
@@ -77,23 +78,27 @@ public class SkiEquipmentRental extends BaseEntity
     /** 租赁开始时间 */
     @ApiModelProperty(value = "租赁开始时间", required = true)
     @Excel(name = "租赁开始时间", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @NotNull(message = "租赁开始时间不能为空")
     private Date rentalStartTime;
 
     /** 租赁结束时间 */
     @ApiModelProperty("租赁结束时间")
     @Excel(name = "租赁结束时间", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date rentalEndTime;
 
     /** 预计归还时间 */
     @ApiModelProperty(value = "预计归还时间", required = true)
     @Excel(name = "预计归还时间", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @NotNull(message = "预计归还时间不能为空")
     private Date expectedReturnTime;
 
     /** 实际归还时间 */
     @ApiModelProperty("实际归还时间")
     @Excel(name = "实际归还时间", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date actualReturnTime;
 
     /** 租赁天数 */
