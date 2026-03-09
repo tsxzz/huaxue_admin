@@ -1,5 +1,18 @@
 <template>
-  <el-card class="coach-card" shadow="hover" @click="handleCardClick">
+  <el-card 
+    class="coach-card" 
+    :class="{ 'recommended-card': showRecommendation }"
+    shadow="hover" 
+    @click="handleCardClick"
+  >
+    <!-- 推荐标签 -->
+    <div class="recommendation-badge" v-if="showRecommendation">
+      <el-icon><Star /></el-icon>
+      <span>推荐</span>
+      <el-tooltip v-if="recommendationReason" :content="recommendationReason" placement="top">
+        <el-icon class="info-icon"><InfoFilled /></el-icon>
+      </el-tooltip>
+    </div>
     <div class="coach-header">
       <div class="coach-avatar">
         <el-avatar :size="80" :src="getAvatarUrl(coach.user?.avatar)" :icon="UserFilled">
@@ -65,13 +78,25 @@
 </template>
 
 <script setup>
-import { User, UserFilled, Star, List, Money } from '@element-plus/icons-vue'
+import { User, UserFilled, Star, List, Money, InfoFilled } from '@element-plus/icons-vue'
 import { getCurrentInstance } from 'vue'
 
 const props = defineProps({
   coach: {
     type: Object,
     required: true
+  },
+  showRecommendation: {
+    type: Boolean,
+    default: false
+  },
+  recommendationScore: {
+    type: Number,
+    default: 0
+  },
+  recommendationReason: {
+    type: String,
+    default: ''
   }
 })
 
@@ -270,5 +295,38 @@ const handleViewDetail = () => {
 
 .rate-text {
   color: #f56c6c;
+}
+
+.recommended-card {
+  position: relative;
+  border: 2px solid #409eff;
+  background: linear-gradient(to bottom, #ecf5ff 0%, #ffffff 10%);
+}
+
+.recommendation-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, #409eff 0%, #67c23a 100%);
+  color: white;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
+}
+
+.recommendation-badge .info-icon {
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.recommendation-badge .info-icon:hover {
+  opacity: 1;
 }
 </style>

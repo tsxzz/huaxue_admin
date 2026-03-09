@@ -4,9 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.ruoyi.system.domain.SkiEquipmentRental;
 import com.ruoyi.system.domain.SkiTicketOrder;
+import com.ruoyi.system.domain.SkiCourseAppointment;
 import com.ruoyi.system.domain.dto.FinancialStatisticsDTO;
 import com.ruoyi.system.mapper.SkiEquipmentRentalMapper;
 import com.ruoyi.system.mapper.SkiTicketOrderMapper;
+import com.ruoyi.system.mapper.SkiCourseAppointmentMapper;
 import com.ruoyi.system.service.IFinancialStatisticsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -30,6 +32,15 @@ public class FinancialStatisticsServiceImpl implements IFinancialStatisticsServi
     
     @Autowired
     private SkiEquipmentRentalMapper equipmentRentalMapper;
+    
+    @Autowired
+    private SkiCourseAppointmentMapper courseAppointmentMapper;
+    
+    /** 教练收入比例（30%） */
+    private static final BigDecimal COACH_REVENUE_RATIO = new BigDecimal("0.30");
+    
+    /** 雪场收入比例（70%） */
+    private static final BigDecimal RESORT_REVENUE_RATIO = new BigDecimal("0.70");
     
     @Override
     public FinancialStatisticsDTO getFinancialStatistics(Date startDate, Date endDate) {
@@ -57,31 +68,60 @@ public class FinancialStatisticsServiceImpl implements IFinancialStatisticsServi
         }
         List<SkiEquipmentRental> rentals = equipmentRentalMapper.selectList(rentalWrapper);
         
-        // 计算总收入
+        // 查询教练课程预约（已支付状态：1）
+        LambdaQueryWrapper<SkiCourseAppointment> courseWrapper = Wrappers.lambdaQuery();
+        courseWrapper.eq(SkiCourseAppointment::getPaymentStatus, "1"); // 已支付
+        if (startDate != null) {
+            courseWrapper.ge(SkiCourseAppointment::getPaymentTime, startDate);
+        }
+        if (endDate != null) {
+            courseWrapper.le(SkiCourseAppointment::getPaymentTime, endDate);
+        }
+        List<SkiCourseAppointment> courseAppointments = courseAppointmentMapper.selectList(courseWrapper);
+        
+        // 计算门票收入
         BigDecimal ticketRevenue = ticketOrders.stream()
             .map(order -> order.getPaidAmount() != null ? order.getPaidAmount() : BigDecimal.ZERO)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         
+        // 计算租赁收入
         BigDecimal rentalRevenue = rentals.stream()
             .map(rental -> rental.getPaidAmount() != null ? rental.getPaidAmount() : BigDecimal.ZERO)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         
-        BigDecimal totalRevenue = ticketRevenue.add(rentalRevenue);
+        // 计算教练课程总收入
+        BigDecimal courseRevenue = courseAppointments.stream()
+            .map(appointment -> appointment.getPrice() != null ? appointment.getPrice() : BigDecimal.ZERO)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        // 计算教练收入（30%）
+        BigDecimal coachRevenue = courseRevenue.multiply(COACH_REVENUE_RATIO)
+            .setScale(2, RoundingMode.HALF_UP);
+        
+        // 计算雪场收入（70%）
+        BigDecimal resortRevenue = courseRevenue.multiply(RESORT_REVENUE_RATIO)
+            .setScale(2, RoundingMode.HALF_UP);
+        
+        // 计算总收入（门票 + 租赁 + 雪场收入部分）
+        BigDecimal totalRevenue = ticketRevenue.add(rentalRevenue).add(resortRevenue);
         
         statistics.setTotalRevenue(totalRevenue);
         statistics.setTicketRevenue(ticketRevenue);
         statistics.setRentalRevenue(rentalRevenue);
+        statistics.setCourseRevenue(courseRevenue);
+        statistics.setCoachRevenue(coachRevenue);
+        statistics.setResortRevenue(resortRevenue);
         
         // 日收入统计
-        List<FinancialStatisticsDTO.DailyRevenueDTO> dailyRevenueList = calculateDailyRevenue(ticketOrders, rentals);
+        List<FinancialStatisticsDTO.DailyRevenueDTO> dailyRevenueList = calculateDailyRevenue(ticketOrders, rentals, courseAppointments);
         statistics.setDailyRevenueList(dailyRevenueList);
         
         // 月收入统计
-        List<FinancialStatisticsDTO.MonthlyRevenueDTO> monthlyRevenueList = calculateMonthlyRevenue(ticketOrders, rentals);
+        List<FinancialStatisticsDTO.MonthlyRevenueDTO> monthlyRevenueList = calculateMonthlyRevenue(ticketOrders, rentals, courseAppointments);
         statistics.setMonthlyRevenueList(monthlyRevenueList);
         
         // 收入来源占比
-        List<FinancialStatisticsDTO.RevenueSourceDTO> revenueSourceList = calculateRevenueSource(ticketRevenue, rentalRevenue);
+        List<FinancialStatisticsDTO.RevenueSourceDTO> revenueSourceList = calculateRevenueSource(ticketRevenue, rentalRevenue, resortRevenue);
         statistics.setRevenueSourceList(revenueSourceList);
         
         // 支付方式统计
@@ -95,7 +135,7 @@ public class FinancialStatisticsServiceImpl implements IFinancialStatisticsServi
      * 计算日收入
      */
     private List<FinancialStatisticsDTO.DailyRevenueDTO> calculateDailyRevenue(
-            List<SkiTicketOrder> ticketOrders, List<SkiEquipmentRental> rentals) {
+            List<SkiTicketOrder> ticketOrders, List<SkiEquipmentRental> rentals, List<SkiCourseAppointment> courseAppointments) {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         Map<String, FinancialStatisticsDTO.DailyRevenueDTO> dailyMap = new LinkedHashMap<>();
         
@@ -108,6 +148,9 @@ public class FinancialStatisticsServiceImpl implements IFinancialStatisticsServi
                     dto.setDate(k);
                     dto.setTicketAmount(BigDecimal.ZERO);
                     dto.setRentalAmount(BigDecimal.ZERO);
+                    dto.setCourseAmount(BigDecimal.ZERO);
+                    dto.setCoachAmount(BigDecimal.ZERO);
+                    dto.setResortAmount(BigDecimal.ZERO);
                     dto.setTotalAmount(BigDecimal.ZERO);
                     return dto;
                 });
@@ -127,6 +170,9 @@ public class FinancialStatisticsServiceImpl implements IFinancialStatisticsServi
                     dto.setDate(k);
                     dto.setTicketAmount(BigDecimal.ZERO);
                     dto.setRentalAmount(BigDecimal.ZERO);
+                    dto.setCourseAmount(BigDecimal.ZERO);
+                    dto.setCoachAmount(BigDecimal.ZERO);
+                    dto.setResortAmount(BigDecimal.ZERO);
                     dto.setTotalAmount(BigDecimal.ZERO);
                     return dto;
                 });
@@ -137,6 +183,34 @@ public class FinancialStatisticsServiceImpl implements IFinancialStatisticsServi
             }
         }
         
+        // 统计教练课程收入
+        for (SkiCourseAppointment appointment : courseAppointments) {
+            if (appointment.getPaymentTime() != null) {
+                String date = sdf.format(appointment.getPaymentTime());
+                dailyMap.computeIfAbsent(date, k -> {
+                    FinancialStatisticsDTO.DailyRevenueDTO dto = new FinancialStatisticsDTO.DailyRevenueDTO();
+                    dto.setDate(k);
+                    dto.setTicketAmount(BigDecimal.ZERO);
+                    dto.setRentalAmount(BigDecimal.ZERO);
+                    dto.setCourseAmount(BigDecimal.ZERO);
+                    dto.setCoachAmount(BigDecimal.ZERO);
+                    dto.setResortAmount(BigDecimal.ZERO);
+                    dto.setTotalAmount(BigDecimal.ZERO);
+                    return dto;
+                });
+                FinancialStatisticsDTO.DailyRevenueDTO dto = dailyMap.get(date);
+                BigDecimal courseAmount = appointment.getPrice() != null ? appointment.getPrice() : BigDecimal.ZERO;
+                BigDecimal coachAmount = courseAmount.multiply(COACH_REVENUE_RATIO).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal resortAmount = courseAmount.multiply(RESORT_REVENUE_RATIO).setScale(2, RoundingMode.HALF_UP);
+                
+                dto.setCourseAmount(dto.getCourseAmount().add(courseAmount));
+                dto.setCoachAmount(dto.getCoachAmount().add(coachAmount));
+                dto.setResortAmount(dto.getResortAmount().add(resortAmount));
+                // 只将雪场收入部分计入总收入
+                dto.setTotalAmount(dto.getTotalAmount().add(resortAmount));
+            }
+        }
+        
         return new ArrayList<>(dailyMap.values());
     }
     
@@ -144,7 +218,7 @@ public class FinancialStatisticsServiceImpl implements IFinancialStatisticsServi
      * 计算月收入
      */
     private List<FinancialStatisticsDTO.MonthlyRevenueDTO> calculateMonthlyRevenue(
-            List<SkiTicketOrder> ticketOrders, List<SkiEquipmentRental> rentals) {
+            List<SkiTicketOrder> ticketOrders, List<SkiEquipmentRental> rentals, List<SkiCourseAppointment> courseAppointments) {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM");
         Map<String, FinancialStatisticsDTO.MonthlyRevenueDTO> monthlyMap = new LinkedHashMap<>();
         
@@ -157,6 +231,9 @@ public class FinancialStatisticsServiceImpl implements IFinancialStatisticsServi
                     dto.setMonth(k);
                     dto.setTicketAmount(BigDecimal.ZERO);
                     dto.setRentalAmount(BigDecimal.ZERO);
+                    dto.setCourseAmount(BigDecimal.ZERO);
+                    dto.setCoachAmount(BigDecimal.ZERO);
+                    dto.setResortAmount(BigDecimal.ZERO);
                     dto.setTotalAmount(BigDecimal.ZERO);
                     return dto;
                 });
@@ -176,6 +253,9 @@ public class FinancialStatisticsServiceImpl implements IFinancialStatisticsServi
                     dto.setMonth(k);
                     dto.setTicketAmount(BigDecimal.ZERO);
                     dto.setRentalAmount(BigDecimal.ZERO);
+                    dto.setCourseAmount(BigDecimal.ZERO);
+                    dto.setCoachAmount(BigDecimal.ZERO);
+                    dto.setResortAmount(BigDecimal.ZERO);
                     dto.setTotalAmount(BigDecimal.ZERO);
                     return dto;
                 });
@@ -186,6 +266,34 @@ public class FinancialStatisticsServiceImpl implements IFinancialStatisticsServi
             }
         }
         
+        // 统计教练课程收入
+        for (SkiCourseAppointment appointment : courseAppointments) {
+            if (appointment.getPaymentTime() != null) {
+                String month = sdf.format(appointment.getPaymentTime());
+                monthlyMap.computeIfAbsent(month, k -> {
+                    FinancialStatisticsDTO.MonthlyRevenueDTO dto = new FinancialStatisticsDTO.MonthlyRevenueDTO();
+                    dto.setMonth(k);
+                    dto.setTicketAmount(BigDecimal.ZERO);
+                    dto.setRentalAmount(BigDecimal.ZERO);
+                    dto.setCourseAmount(BigDecimal.ZERO);
+                    dto.setCoachAmount(BigDecimal.ZERO);
+                    dto.setResortAmount(BigDecimal.ZERO);
+                    dto.setTotalAmount(BigDecimal.ZERO);
+                    return dto;
+                });
+                FinancialStatisticsDTO.MonthlyRevenueDTO dto = monthlyMap.get(month);
+                BigDecimal courseAmount = appointment.getPrice() != null ? appointment.getPrice() : BigDecimal.ZERO;
+                BigDecimal coachAmount = courseAmount.multiply(COACH_REVENUE_RATIO).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal resortAmount = courseAmount.multiply(RESORT_REVENUE_RATIO).setScale(2, RoundingMode.HALF_UP);
+                
+                dto.setCourseAmount(dto.getCourseAmount().add(courseAmount));
+                dto.setCoachAmount(dto.getCoachAmount().add(coachAmount));
+                dto.setResortAmount(dto.getResortAmount().add(resortAmount));
+                // 只将雪场收入部分计入总收入
+                dto.setTotalAmount(dto.getTotalAmount().add(resortAmount));
+            }
+        }
+        
         return new ArrayList<>(monthlyMap.values());
     }
     
@@ -193,8 +301,8 @@ public class FinancialStatisticsServiceImpl implements IFinancialStatisticsServi
      * 计算收入来源占比
      */
     private List<FinancialStatisticsDTO.RevenueSourceDTO> calculateRevenueSource(
-            BigDecimal ticketRevenue, BigDecimal rentalRevenue) {
-        BigDecimal total = ticketRevenue.add(rentalRevenue);
+            BigDecimal ticketRevenue, BigDecimal rentalRevenue, BigDecimal resortRevenue) {
+        BigDecimal total = ticketRevenue.add(rentalRevenue).add(resortRevenue);
         List<FinancialStatisticsDTO.RevenueSourceDTO> list = new ArrayList<>();
         
         if (total.compareTo(BigDecimal.ZERO) > 0) {
@@ -209,6 +317,12 @@ public class FinancialStatisticsServiceImpl implements IFinancialStatisticsServi
             rental.setAmount(rentalRevenue);
             rental.setPercentage(rentalRevenue.divide(total, 4, RoundingMode.HALF_UP).multiply(new BigDecimal("100")).doubleValue());
             list.add(rental);
+            
+            FinancialStatisticsDTO.RevenueSourceDTO course = new FinancialStatisticsDTO.RevenueSourceDTO();
+            course.setSource("课程收入（雪场）");
+            course.setAmount(resortRevenue);
+            course.setPercentage(resortRevenue.divide(total, 4, RoundingMode.HALF_UP).multiply(new BigDecimal("100")).doubleValue());
+            list.add(course);
         }
         
         return list;

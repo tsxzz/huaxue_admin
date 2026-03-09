@@ -19,6 +19,15 @@ public class FinancialStatisticsDTO {
     /** 租赁收入 */
     private BigDecimal rentalRevenue;
     
+    /** 教练课程总收入 */
+    private BigDecimal courseRevenue;
+    
+    /** 教练收入（30%） */
+    private BigDecimal coachRevenue;
+    
+    /** 雪场收入（70%） */
+    private BigDecimal resortRevenue;
+    
     /** 日收入统计列表 */
     private List<DailyRevenueDTO> dailyRevenueList;
     
@@ -53,6 +62,30 @@ public class FinancialStatisticsDTO {
 
     public void setRentalRevenue(BigDecimal rentalRevenue) {
         this.rentalRevenue = rentalRevenue;
+    }
+
+    public BigDecimal getCourseRevenue() {
+        return courseRevenue;
+    }
+
+    public void setCourseRevenue(BigDecimal courseRevenue) {
+        this.courseRevenue = courseRevenue;
+    }
+
+    public BigDecimal getCoachRevenue() {
+        return coachRevenue;
+    }
+
+    public void setCoachRevenue(BigDecimal coachRevenue) {
+        this.coachRevenue = coachRevenue;
+    }
+
+    public BigDecimal getResortRevenue() {
+        return resortRevenue;
+    }
+
+    public void setResortRevenue(BigDecimal resortRevenue) {
+        this.resortRevenue = resortRevenue;
     }
 
     public List<DailyRevenueDTO> getDailyRevenueList() {
@@ -94,6 +127,9 @@ public class FinancialStatisticsDTO {
         private String date;
         private BigDecimal ticketAmount;
         private BigDecimal rentalAmount;
+        private BigDecimal courseAmount;
+        private BigDecimal coachAmount;
+        private BigDecimal resortAmount;
         private BigDecimal totalAmount;
 
         public String getDate() {
@@ -127,6 +163,30 @@ public class FinancialStatisticsDTO {
         public void setTotalAmount(BigDecimal totalAmount) {
             this.totalAmount = totalAmount;
         }
+
+        public BigDecimal getCourseAmount() {
+            return courseAmount;
+        }
+
+        public void setCourseAmount(BigDecimal courseAmount) {
+            this.courseAmount = courseAmount;
+        }
+
+        public BigDecimal getCoachAmount() {
+            return coachAmount;
+        }
+
+        public void setCoachAmount(BigDecimal coachAmount) {
+            this.coachAmount = coachAmount;
+        }
+
+        public BigDecimal getResortAmount() {
+            return resortAmount;
+        }
+
+        public void setResortAmount(BigDecimal resortAmount) {
+            this.resortAmount = resortAmount;
+        }
     }
 
     /**
@@ -136,6 +196,9 @@ public class FinancialStatisticsDTO {
         private String month;
         private BigDecimal ticketAmount;
         private BigDecimal rentalAmount;
+        private BigDecimal courseAmount;
+        private BigDecimal coachAmount;
+        private BigDecimal resortAmount;
         private BigDecimal totalAmount;
 
         public String getMonth() {
@@ -168,6 +231,30 @@ public class FinancialStatisticsDTO {
 
         public void setTotalAmount(BigDecimal totalAmount) {
             this.totalAmount = totalAmount;
+        }
+
+        public BigDecimal getCourseAmount() {
+            return courseAmount;
+        }
+
+        public void setCourseAmount(BigDecimal courseAmount) {
+            this.courseAmount = courseAmount;
+        }
+
+        public BigDecimal getCoachAmount() {
+            return coachAmount;
+        }
+
+        public void setCoachAmount(BigDecimal coachAmount) {
+            this.coachAmount = coachAmount;
+        }
+
+        public BigDecimal getResortAmount() {
+            return resortAmount;
+        }
+
+        public void setResortAmount(BigDecimal resortAmount) {
+            this.resortAmount = resortAmount;
         }
     }
 

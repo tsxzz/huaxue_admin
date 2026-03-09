@@ -65,6 +65,45 @@
         </el-row>
       </div>
 
+      <!-- 推荐教练区域 -->
+      <div class="recommendation-section" v-if="recommendedCoaches.length > 0">
+        <el-divider>
+          <el-icon><Star /></el-icon>
+          <span style="font-weight: bold; color: #409EFF;">为您推荐</span>
+        </el-divider>
+        <div class="recommendation-tip">
+          <el-alert
+            :closable="false"
+            type="info"
+            show-icon
+          >
+            <template #title>
+              <span>基于协同过滤算法，为您推荐可能感兴趣的教练</span>
+            </template>
+          </el-alert>
+        </div>
+        <el-row :gutter="20" style="margin-top: 20px">
+          <el-col
+            v-for="coach in recommendedCoaches"
+            :key="coach.coachId"
+            :xs="24"
+            :sm="12"
+            :md="8"
+            :lg="6"
+            style="margin-bottom: 20px"
+          >
+            <CoachCard 
+              :coach="convertRecommendationToCoach(coach)" 
+              :show-recommendation="true"
+              :recommendation-score="coach.recommendationScore"
+              :recommendation-reason="coach.recommendationReason"
+              @view-detail="handleViewDetail" 
+            />
+          </el-col>
+        </el-row>
+        <el-divider />
+      </div>
+
       <!-- 统计信息 -->
       <div class="stats-section" v-if="coachList.length > 0">
         <el-row :gutter="20">
@@ -141,16 +180,19 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { Search, Refresh, UserFilled } from '@element-plus/icons-vue'
+import { Search, Refresh, UserFilled, Star } from '@element-plus/icons-vue'
 import CoachCard from './components/CoachCard.vue'
 import CoachDetailDialog from './components/CoachDetailDialog.vue'
 import { listCoachInfo } from '@/api/coachInfo'
+import { getCoachRecommendations } from '@/api/coachRecommendation'
 
 const loading = ref(false)
 const coachList = ref([])
 const total = ref(0)
 const detailDialogVisible = ref(false)
 const selectedCoach = ref(null)
+const recommendedCoaches = ref([])
+const loadingRecommendations = ref(false)
 
 const queryParams = reactive({
   pageNum: 1,
@@ -221,6 +263,42 @@ const getList = () => {
     })
 }
 
+// 加载推荐教练
+const loadRecommendations = async () => {
+  loadingRecommendations.value = true
+  try {
+    const response = await getCoachRecommendations(6, 'hybrid')
+    if (response.code === 200 && response.rows) {
+      recommendedCoaches.value = response.rows || []
+    }
+  } catch (error) {
+    console.error('加载推荐教练失败:', error)
+    recommendedCoaches.value = []
+  } finally {
+    loadingRecommendations.value = false
+  }
+}
+
+// 将推荐DTO转换为教练对象
+const convertRecommendationToCoach = (recommendation) => {
+  return {
+    id: recommendation.coachId,
+    userId: recommendation.userId,
+    coachLevel: recommendation.coachLevel,
+    specialty: recommendation.specialty,
+    hourlyRate: recommendation.hourlyRate,
+    averageRating: recommendation.averageRating,
+    teachingYears: 0, // 推荐数据中没有，设为默认值
+    totalStudents: 0, // 推荐数据中没有，设为默认值
+    introduction: '', // 推荐数据中没有，设为默认值
+    user: {
+      userName: recommendation.coachName,
+      nickName: recommendation.coachName,
+      avatar: recommendation.avatar || null // 添加头像信息
+    }
+  }
+}
+
 // 搜索
 const handleQuery = () => {
   queryParams.pageNum = 1
@@ -244,6 +322,7 @@ const handleViewDetail = (coach) => {
 
 onMounted(() => {
   getList()
+  loadRecommendations()
 })
 </script>
 

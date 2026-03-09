@@ -1,83 +1,130 @@
 <template>
-  <div class="register">
-    <el-form ref="registerRef" :model="registerForm" :rules="registerRules" class="register-form">
-      <h3 class="title">滑雪场管理系统</h3>
-      <el-form-item prop="username">
-        <el-input 
-          v-model="registerForm.username" 
-          type="text" 
-          size="large" 
-          auto-complete="off" 
-          placeholder="账号"
-        >
-          <template #prefix><svg-icon icon-class="user" class="el-input__icon input-icon" /></template>
-        </el-input>
-      </el-form-item>
-      <el-form-item prop="password">
-        <el-input
-          v-model="registerForm.password"
-          type="password"
-          size="large" 
-          auto-complete="off"
-          placeholder="密码"
-          @keyup.enter="handleRegister"
-        >
-          <template #prefix><svg-icon icon-class="password" class="el-input__icon input-icon" /></template>
-        </el-input>
-      </el-form-item>
-      <el-form-item prop="confirmPassword">
-        <el-input
-          v-model="registerForm.confirmPassword"
-          type="password"
-          size="large" 
-          auto-complete="off"
-          placeholder="确认密码"
-          @keyup.enter="handleRegister"
-        >
-          <template #prefix><svg-icon icon-class="password" class="el-input__icon input-icon" /></template>
-        </el-input>
-      </el-form-item>
-      <el-form-item prop="code" v-if="captchaEnabled">
-        <el-input
-          size="large" 
-          v-model="registerForm.code"
-          auto-complete="off"
-          placeholder="验证码"
-          style="width: 63%"
-          @keyup.enter="handleRegister"
-        >
-          <template #prefix><svg-icon icon-class="validCode" class="el-input__icon input-icon" /></template>
-        </el-input>
-        <div class="register-code">
-          <img :src="codeUrl" @click="getCode" class="register-code-img"/>
+  <div class="register-container">
+    <!-- 背景装饰 -->
+    <div class="background-decoration">
+      <div class="snow-mountain"></div>
+      <div class="snow-mountain snow-mountain-2"></div>
+      <div class="snowflakes">
+        <div class="snowflake" v-for="n in 50" :key="n"></div>
+      </div>
+    </div>
+
+    <!-- 注册表单 -->
+    <div class="register-wrapper">
+      <el-form ref="registerRef" :model="registerForm" :rules="registerRules" class="register-form">
+        <!-- Logo和标题区域 -->
+        <div class="register-header">
+          <div class="logo-container">
+            <span class="logo-text">⛷</span>
+          </div>
+          <h1 class="register-title">滑雪场管理系统</h1>
+          <p class="register-subtitle">Ski Resort Management System</p>
         </div>
-      </el-form-item>
-      <el-form-item style="width:100%;">
-        <el-button
-          :loading="loading"
-          size="large" 
-          type="primary"
-          style="width:100%;"
-          @click.prevent="handleRegister"
-        >
-          <span v-if="!loading">注 册</span>
-          <span v-else>注 册 中...</span>
-        </el-button>
-        <div style="float: right;">
-          <router-link class="link-type" :to="'/login'">使用已有账户登录</router-link>
+
+        <!-- 表单内容 -->
+        <div class="form-content">
+          <el-form-item prop="username">
+            <el-input
+              v-model="registerForm.username"
+              type="text"
+              size="large"
+              auto-complete="off"
+              placeholder="请输入账号"
+              class="custom-input"
+            >
+              <template #prefix>
+                <el-icon class="input-icon"><User /></el-icon>
+              </template>
+            </el-input>
+          </el-form-item>
+
+          <el-form-item prop="password">
+            <el-input
+              v-model="registerForm.password"
+              type="password"
+              size="large"
+              auto-complete="off"
+              placeholder="请输入密码"
+              class="custom-input"
+              @keyup.enter="handleRegister"
+            >
+              <template #prefix>
+                <el-icon class="input-icon"><Lock /></el-icon>
+              </template>
+            </el-input>
+          </el-form-item>
+
+          <el-form-item prop="confirmPassword">
+            <el-input
+              v-model="registerForm.confirmPassword"
+              type="password"
+              size="large"
+              auto-complete="off"
+              placeholder="请确认密码"
+              class="custom-input"
+              @keyup.enter="handleRegister"
+            >
+              <template #prefix>
+                <el-icon class="input-icon"><Lock /></el-icon>
+              </template>
+            </el-input>
+          </el-form-item>
+
+          <el-form-item prop="code" v-if="captchaEnabled">
+            <el-input
+              v-model="registerForm.code"
+              size="large"
+              auto-complete="off"
+              placeholder="验证码"
+              class="custom-input code-input"
+              @keyup.enter="handleRegister"
+            >
+              <template #prefix>
+                <el-icon class="input-icon"><Key /></el-icon>
+              </template>
+            </el-input>
+            <div class="register-code">
+              <img :src="codeUrl" @click="getCode" class="register-code-img" alt="验证码"/>
+            </div>
+          </el-form-item>
+
+          <el-form-item style="width:100%; margin-top: 20px;">
+            <el-button
+              :loading="loading"
+              size="large"
+              type="primary"
+              class="register-button"
+              @click.prevent="handleRegister"
+            >
+              <span v-if="!loading">
+                <el-icon><Right /></el-icon>
+                注 册
+              </span>
+              <span v-else>注 册 中...</span>
+            </el-button>
+          </el-form-item>
+
+          <div class="form-options">
+            <router-link to="/login" class="login-link">
+              使用已有账户登录
+            </router-link>
+          </div>
         </div>
-      </el-form-item>
-    </el-form>
-    <!--  底部  -->
-    <div class="el-register-footer">
-      <span>Copyright © 2018-2023 ruoyi.vip All Rights Reserved.</span>
+      </el-form>
+    </div>
+
+    <!-- 底部信息 -->
+    <div class="register-footer">
+      <p>欢迎使用滑雪场管理系统</p>
+      <p class="copyright">Copyright © 2024 Ski Resort Management System All Rights Reserved.</p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ElMessageBox } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { getCodeImg, register } from "@/api/login";
+import { User, Lock, Key, Right } from '@element-plus/icons-vue'
 
 const router = useRouter();
 const { proxy } = getCurrentInstance();
@@ -124,16 +171,16 @@ function handleRegister() {
     if (valid) {
       loading.value = true;
       register(registerForm.value).then(res => {
+        loading.value = false;
         const username = registerForm.value.username;
-        ElMessageBox.alert("<font color='red'>恭喜你，您的账号 " + username + " 注册成功！</font>", "系统提示", {
-          dangerouslyUseHTMLString: true,
+        ElMessageBox.alert("恭喜你，您的账号 " + username + " 注册成功！", "系统提示", {
           type: "success",
         }).then(() => {
           router.push("/login");
         }).catch(() => {});
-      }).catch(() => {
+      }).catch((error) => {
         loading.value = false;
-        if (captchaEnabled) {
+        if (captchaEnabled.value) {
           getCode();
         }
       });
@@ -151,69 +198,261 @@ function getCode() {
   });
 }
 
+// 页面加载时获取验证码
 getCode();
 </script>
 
 <style lang='scss' scoped>
-.register {
+.register-container {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100%;
-  background-image: url("../assets/images/login-background.jpg");
-  background-size: cover;
 }
-.title {
-  margin: 0px auto 30px auto;
-  text-align: center;
-  color: #707070;
+
+// 背景装饰
+.background-decoration {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  z-index: 0;
+  
+  .snow-mountain {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 200px;
+    background: linear-gradient(to top, rgba(255, 255, 255, 0.3) 0%, transparent 100%);
+    clip-path: polygon(0 100%, 20% 60%, 40% 80%, 60% 50%, 80% 70%, 100% 40%, 100% 100%);
+    
+    &.snow-mountain-2 {
+      height: 150px;
+      opacity: 0.5;
+      clip-path: polygon(0 100%, 15% 70%, 35% 85%, 55% 60%, 75% 75%, 100% 50%, 100% 100%);
+    }
+  }
+  
+  .snowflakes {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    
+    .snowflake {
+      position: absolute;
+      top: -10px;
+      color: white;
+      font-size: 1em;
+      animation: snowfall linear infinite;
+      opacity: 0.7;
+      
+      @for $i from 1 through 50 {
+        &:nth-child(#{$i}) {
+          left: random(100) * 1%;
+          animation-duration: random(10) + 10s;
+          animation-delay: random(10) * 0.1s;
+          font-size: random(3) + 10px;
+        }
+      }
+    }
+  }
+}
+
+@keyframes snowfall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  100% {
+    transform: translateY(100vh) rotate(360deg);
+  }
+}
+
+// 注册表单容器
+.register-wrapper {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 450px;
+  padding: 20px;
 }
 
 .register-form {
-  border-radius: 6px;
-  background: #ffffff;
-  width: 400px;
-  padding: 25px 25px 5px 25px;
-  .el-input {
-    height: 40px;
-    input {
-      height: 40px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.register-header {
+  text-align: center;
+  margin-bottom: 30px;
+  
+  .logo-container {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    
+    .logo-text {
+      font-size: 40px;
     }
   }
-  .input-icon {
-    height: 39px;
-    width: 14px;
-    margin-left: 0px;
+  
+  .register-title {
+    margin: 0 0 10px 0;
+    font-size: 28px;
+    font-weight: 700;
+    color: #2c3e50;
+  }
+  
+  .register-subtitle {
+    margin: 0;
+    font-size: 14px;
+    color: #909399;
   }
 }
-.register-tip {
-  font-size: 13px;
-  text-align: center;
-  color: #bfbfbf;
+
+.form-content {
+  margin-top: 10px;
 }
+
+.custom-input {
+  :deep(.el-input__wrapper) {
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    
+    &:hover {
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    }
+    
+    &.is-focus {
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+  }
+  
+  :deep(.el-input__inner) {
+    height: 48px;
+    font-size: 15px;
+  }
+}
+
+.custom-select {
+  :deep(.el-input__wrapper) {
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.input-icon {
+  font-size: 18px;
+  color: #909399;
+}
+
+.code-input {
+  width: 63%;
+  display: inline-block;
+}
+
 .register-code {
-  width: 33%;
-  height: 40px;
+  width: 35%;
+  height: 48px;
   float: right;
-  img {
-    cursor: pointer;
-    vertical-align: middle;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    transform: translateY(-2px);
   }
 }
-.el-register-footer {
-  height: 40px;
-  line-height: 40px;
+
+.register-code-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.form-options {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.login-link {
+  color: #667eea;
+  text-decoration: none;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    color: #764ba2;
+    text-decoration: underline;
+  }
+}
+
+.register-button {
+  width: 100%;
+  height: 50px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+  
+  :deep(.el-icon) {
+    margin-right: 5px;
+  }
+}
+
+.register-footer {
   position: fixed;
   bottom: 0;
-  width: 100%;
+  left: 0;
+  right: 0;
   text-align: center;
-  color: #fff;
-  font-family: Arial;
-  font-size: 12px;
-  letter-spacing: 1px;
-}
-.register-code-img {
-  height: 40px;
-  padding-left: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  padding: 20px;
+  z-index: 1;
+  
+  p {
+    margin: 5px 0;
+    font-size: 14px;
+  }
+  
+  .copyright {
+    font-size: 12px;
+    opacity: 0.7;
+  }
 }
 </style>

@@ -96,6 +96,14 @@
               <span v-else>登 录 中...</span>
             </el-button>
           </el-form-item>
+
+          <!-- 注册入口 -->
+          <div v-if="register" class="register-tip">
+            <span style="color: #909399;">还没有账号？</span>
+            <router-link to="/register" class="register-link-bold">
+              立即注册
+            </router-link>
+          </div>
         </div>
       </el-form>
     </div>
@@ -109,16 +117,25 @@
 </template>
 
 <script setup>
+import { ref, watch, getCurrentInstance, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { getCodeImg } from "@/api/login";
+import { getConfigKey } from "@/api/system/config";
 import Cookies from "js-cookie";
 import { encrypt, decrypt } from "@/utils/jsencrypt";
 import useUserStore from '@/store/modules/user'
 import { User, Lock, Key, Right } from '@element-plus/icons-vue'
 
+// 最开始的调试信息
+console.log('=== 登录页面脚本开始执行 ===');
+console.log('=== 导入完成 ===');
+
 const userStore = useUserStore()
 const route = useRoute();
 const router = useRouter();
 const { proxy } = getCurrentInstance();
+
+console.log('=== 变量初始化完成 ===');
 
 const loginForm = ref({
   username: "admin",
@@ -138,8 +155,8 @@ const codeUrl = ref("");
 const loading = ref(false);
 // 验证码开关
 const captchaEnabled = ref(true);
-// 注册开关
-const register = ref(false);
+// 注册开关 - 默认从数据库配置获取，如果接口未返回则使用默认值 true（因为已在数据库中设置为 true）
+const register = ref(true);
 const redirect = ref(undefined);
 
 watch(route, (newRoute) => {
@@ -182,13 +199,64 @@ function handleLogin() {
   });
 }
 
+// 备用方案：通过配置接口获取注册开关（暂时不使用，直接保持为 true）
+function getRegisterConfig() {
+  // 直接设置为 true，不调用接口
+  register.value = true;
+  console.log('保持注册开关为 true');
+  
+  // 如果需要从接口获取，可以取消下面的注释
+  /*
+  getConfigKey('sys.account.registerUser').then(res => {
+    console.log('从配置接口获取注册开关:', res);
+    if (res && (res === 'true' || res === true)) {
+      register.value = true;
+      console.log('注册功能已开启');
+    } else {
+      register.value = false;
+      console.log('注册功能已关闭');
+    }
+  }).catch(err => {
+    console.warn('无法从配置接口获取注册开关:', err);
+    register.value = true;
+  });
+  */
+}
+
 function getCode() {
+  console.log('开始调用 getCode 函数');
+  // 确保 register 始终保持为 true（因为已在数据库中设置为 true）
+  register.value = true;
+  console.log('强制设置 register 为 true');
+  
   getCodeImg().then(res => {
+    // 调试信息
+    console.log('验证码接口返回数据:', res);
+    console.log('返回数据类型:', typeof res);
+    console.log('返回数据的所有键:', Object.keys(res || {}));
     captchaEnabled.value = res.captchaEnabled === undefined ? true : res.captchaEnabled;
+    
+    // 获取注册开关
+    // 如果后端返回了 register 字段，使用接口的值；否则保持 true
+    if (res.register !== undefined) {
+      register.value = res.register === true || res.register === 'true';
+      console.log('从验证码接口获取到注册开关:', register.value);
+    } else {
+      // 如果后端没有返回 register 字段，保持默认值 true
+      console.log('验证码接口没有返回 register 字段，保持默认值 true');
+      register.value = true;
+    }
+    
+    console.log('最终注册开关值:', register.value, '类型:', typeof register.value);
     if (captchaEnabled.value) {
       codeUrl.value = "data:image/gif;base64," + res.img;
       loginForm.value.uuid = res.uuid;
     }
+  }).catch(err => {
+    console.error('获取验证码失败:', err);
+    console.error('错误详情:', err.response || err.message || err);
+    // 即使出错，也保持 register 为 true
+    register.value = true;
   });
 }
 
@@ -203,8 +271,34 @@ function getCookie() {
   };
 }
 
-getCode();
-getCookie();
+// 立即执行的调试 - 确保代码被加载
+console.log('=== 登录页面脚本加载完成 ===');
+console.log('register 初始值:', register.value);
+console.log('register 变量类型:', typeof register.value);
+console.log('register 是否为 true:', register.value === true);
+
+// 使用 onMounted 确保组件挂载后再调用
+onMounted(() => {
+  console.log('=== onMounted 钩子执行 ===');
+  console.log('登录页面组件已挂载');
+  console.log('准备调用 getCode()');
+  try {
+    getCode();
+    getCookie();
+    console.log('=== getCode 和 getCookie 调用完成 ===');
+  } catch (error) {
+    console.error('=== onMounted 中发生错误 ===', error);
+    console.error('错误堆栈:', error.stack);
+  }
+});
+
+// 测试：直接调用一次看看
+console.log('=== 测试：直接调用 getCode ===');
+try {
+  getCode();
+} catch (e) {
+  console.error('直接调用 getCode 失败:', e);
+}
 </script>
 
 <style lang='scss' scoped>
@@ -458,10 +552,13 @@ getCookie();
 
 // 表单选项
 .form-options {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 10px !important;
+  width: 100% !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .remember-me {
@@ -472,14 +569,37 @@ getCookie();
 }
 
 .register-link {
-  color: #667eea;
-  text-decoration: none;
-  font-size: 14px;
+  color: #667eea !important;
+  text-decoration: none !important;
+  font-size: 14px !important;
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
   transition: all 0.3s ease;
   
   &:hover {
-    color: #764ba2;
-    text-decoration: underline;
+    color: #764ba2 !important;
+    text-decoration: underline !important;
+  }
+}
+
+.register-tip {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+}
+
+.register-link-bold {
+  color: #667eea !important;
+  text-decoration: none !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  margin-left: 5px;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    color: #764ba2 !important;
+    text-decoration: underline !important;
   }
 }
 

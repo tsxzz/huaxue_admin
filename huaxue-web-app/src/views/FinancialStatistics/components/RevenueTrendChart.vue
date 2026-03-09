@@ -33,6 +33,7 @@ const updateChart = () => {
   const dates = props.data.map(item => props.type === 'daily' ? item.date : item.month)
   const ticketAmounts = props.data.map(item => item.ticketAmount ? parseFloat(item.ticketAmount) : 0)
   const rentalAmounts = props.data.map(item => item.rentalAmount ? parseFloat(item.rentalAmount) : 0)
+  const resortAmounts = props.data.map(item => item.resortAmount ? parseFloat(item.resortAmount) : 0)
   const totalAmounts = props.data.map(item => item.totalAmount ? parseFloat(item.totalAmount) : 0)
   
   const option = {
@@ -55,7 +56,7 @@ const updateChart = () => {
       }
     },
     legend: {
-      data: ['门票收入', '租赁收入', '总收入'],
+      data: ['门票收入', '租赁收入', '课程收入（雪场）', '总收入'],
       bottom: 10
     },
     grid: {
@@ -89,6 +90,13 @@ const updateChart = () => {
         data: rentalAmounts,
         smooth: true,
         itemStyle: { color: '#67C23A' }
+      },
+      {
+        name: '课程收入（雪场）',
+        type: 'line',
+        data: resortAmounts,
+        smooth: true,
+        itemStyle: { color: '#F56C6C' }
       },
       {
         name: '总收入',

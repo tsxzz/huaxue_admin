@@ -16,7 +16,10 @@ import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.framework.manager.AsyncManager;
 import com.ruoyi.framework.manager.factory.AsyncFactory;
+import com.ruoyi.common.core.domain.entity.SysRole;
+import com.ruoyi.system.mapper.SysRoleMapper;
 import com.ruoyi.system.service.ISysConfigService;
+import java.util.List;
 import com.ruoyi.system.service.ISysUserService;
 
 /**
@@ -32,6 +35,9 @@ public class SysRegisterService
 
     @Autowired
     private ISysConfigService configService;
+
+    @Autowired
+    private SysRoleMapper roleMapper;
 
     @Autowired
     private RedisCache redisCache;
@@ -79,14 +85,41 @@ public class SysRegisterService
             sysUser.setNickName(username);
             sysUser.setPwdUpdateDate(DateUtils.getNowDate());
             sysUser.setPassword(SecurityUtils.encryptPassword(password));
-            boolean regFlag = userService.registerUser(sysUser);
-            if (!regFlag)
+            
+            // 自动分配"游客"角色（roleKey = "Tourist"）
+            // 直接使用 Mapper 查询，避免数据权限切面拦截（注册是匿名访问，没有登录用户）
+            SysRole queryRole = new SysRole();
+            queryRole.setRoleKey("Tourist");
+            List<SysRole> roles = roleMapper.selectRoleList(queryRole);
+            if (roles != null && !roles.isEmpty())
             {
-                msg = "注册失败,请联系系统管理人员";
+                SysRole touristRole = roles.get(0);
+                if (touristRole != null && "0".equals(touristRole.getStatus()))
+                {
+                    Long[] roleIds = new Long[]{touristRole.getRoleId()};
+                    sysUser.setRoleIds(roleIds);
+                }
+                else
+                {
+                    msg = "游客角色不可用，请联系系统管理员";
+                }
             }
             else
             {
-                AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.REGISTER, MessageUtils.message("user.register.success")));
+                msg = "未找到游客角色，请联系系统管理员";
+            }
+            
+            if (StringUtils.isEmpty(msg))
+            {
+                boolean regFlag = userService.registerUser(sysUser);
+                if (!regFlag)
+                {
+                    msg = "注册失败,请联系系统管理人员";
+                }
+                else
+                {
+                    AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.REGISTER, MessageUtils.message("user.register.success")));
+                }
             }
         }
         return msg;

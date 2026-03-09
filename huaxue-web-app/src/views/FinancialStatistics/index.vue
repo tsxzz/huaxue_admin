@@ -7,7 +7,7 @@
           <el-icon class="title-icon"><Money /></el-icon>
           <h1>财务统计</h1>
         </div>
-        <p class="header-desc">查看门票销售和雪具租赁的财务统计数据</p>
+        <p class="header-desc">查看门票销售、雪具租赁和教练课程的财务统计数据</p>
       </div>
     </div>
 
@@ -78,6 +78,42 @@
           </div>
         </div>
       </el-card>
+
+      <el-card class="stat-card" shadow="hover">
+        <div class="stat-content">
+          <div class="stat-icon course">
+            <el-icon><UserFilled /></el-icon>
+          </div>
+          <div class="stat-info">
+            <div class="stat-label">课程总收入</div>
+            <div class="stat-value">¥{{ formatAmount(statistics.courseRevenue) }}</div>
+          </div>
+        </div>
+      </el-card>
+
+      <el-card class="stat-card" shadow="hover">
+        <div class="stat-content">
+          <div class="stat-icon coach">
+            <el-icon><Avatar /></el-icon>
+          </div>
+          <div class="stat-info">
+            <div class="stat-label">教练收入（30%）</div>
+            <div class="stat-value">¥{{ formatAmount(statistics.coachRevenue) }}</div>
+          </div>
+        </div>
+      </el-card>
+
+      <el-card class="stat-card" shadow="hover">
+        <div class="stat-content">
+          <div class="stat-icon resort">
+            <el-icon><OfficeBuilding /></el-icon>
+          </div>
+          <div class="stat-info">
+            <div class="stat-label">雪场收入（70%）</div>
+            <div class="stat-value">¥{{ formatAmount(statistics.resortRevenue) }}</div>
+          </div>
+        </div>
+      </el-card>
     </div>
 
     <!-- 图表区域 -->
@@ -111,7 +147,7 @@
 <script setup name="FinancialStatistics">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Money, Ticket, ShoppingBag, Search, Refresh } from '@element-plus/icons-vue'
+import { Money, Ticket, ShoppingBag, Search, Refresh, UserFilled, Avatar, OfficeBuilding } from '@element-plus/icons-vue'
 import { getFinancialStatistics } from '@/api/financialStatistics'
 import RevenueTrendChart from './components/RevenueTrendChart.vue'
 import RevenueSourceChart from './components/RevenueSourceChart.vue'
@@ -131,6 +167,9 @@ const statistics = reactive({
   totalRevenue: 0,
   ticketRevenue: 0,
   rentalRevenue: 0,
+  courseRevenue: 0,
+  coachRevenue: 0,
+  resortRevenue: 0,
   dailyRevenueList: [],
   monthlyRevenueList: [],
   revenueSourceList: [],
@@ -158,6 +197,9 @@ const getStatistics = async () => {
       statistics.totalRevenue = data.totalRevenue || 0
       statistics.ticketRevenue = data.ticketRevenue || 0
       statistics.rentalRevenue = data.rentalRevenue || 0
+      statistics.courseRevenue = data.courseRevenue || 0
+      statistics.coachRevenue = data.coachRevenue || 0
+      statistics.resortRevenue = data.resortRevenue || 0
       statistics.dailyRevenueList = data.dailyRevenueList || []
       statistics.monthlyRevenueList = data.monthlyRevenueList || []
       statistics.revenueSourceList = data.revenueSourceList || []
@@ -251,6 +293,10 @@ const formatDate = (date) => {
     gap: 20px;
     margin-bottom: 20px;
 
+    @media (max-width: 1400px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
     .stat-card {
       .stat-content {
         display: flex;
@@ -277,6 +323,18 @@ const formatDate = (date) => {
 
           &.rental {
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+          }
+
+          &.course {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+          }
+
+          &.coach {
+            background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+          }
+
+          &.resort {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
           }
         }
 
