@@ -6,6 +6,11 @@
         {{ course.courseType }}
       </el-tag>
     </div>
+    <div class="coach-highlight" v-if="course.coachName">
+      <el-icon class="coach-icon"><Avatar /></el-icon>
+      <span class="coach-name">{{ course.coachName }}</span>
+      <span class="coach-label">授课教练</span>
+    </div>
     <div class="course-info">
       <div class="info-item">
         <el-icon><Clock /></el-icon>
@@ -32,7 +37,7 @@
 </template>
 
 <script setup>
-import { Clock, Money, User } from '@element-plus/icons-vue'
+import { Clock, Money, User, Avatar } from '@element-plus/icons-vue'
 
 const props = defineProps({
   course: {
@@ -83,6 +88,34 @@ const handleViewSchedule = () => {
   font-size: 18px;
   font-weight: 600;
   color: #303133;
+}
+
+.coach-highlight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  margin-bottom: 15px;
+  background: linear-gradient(135deg, #ecf5ff 0%, #e6f0fa 100%);
+  border: 1px solid #b3d8ff;
+  border-radius: 8px;
+}
+
+.coach-icon {
+  font-size: 22px;
+  color: #409eff;
+}
+
+.coach-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.coach-label {
+  margin-left: 4px;
+  font-size: 12px;
+  color: #909399;
 }
 
 .course-info {

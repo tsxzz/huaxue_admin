@@ -54,6 +54,10 @@ public class SkiCourse extends BaseEntity {
     @Excel(name = "状态")
     private String status;
 
+    /** 教练姓名（关联查询，非数据库字段） */
+    @TableField(exist = false)
+    private String coachName;
+
     @TableField(exist = false)
     private String searchValue;
 
@@ -131,5 +135,13 @@ public class SkiCourse extends BaseEntity {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getCoachName() {
+        return coachName;
+    }
+
+    public void setCoachName(String coachName) {
+        this.coachName = coachName;
     }
 }

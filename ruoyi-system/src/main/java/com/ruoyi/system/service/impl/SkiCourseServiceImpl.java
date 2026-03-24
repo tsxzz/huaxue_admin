@@ -3,9 +3,12 @@ package com.ruoyi.system.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.ruoyi.common.utils.SecurityUtils;
+import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.system.domain.SkiCourse;
 import com.ruoyi.system.mapper.SkiCourseMapper;
 import com.ruoyi.system.service.ISkiCourseService;
+import com.ruoyi.system.service.ISysUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -21,9 +24,14 @@ public class SkiCourseServiceImpl implements ISkiCourseService {
     @Autowired
     private SkiCourseMapper skiCourseMapper;
 
+    @Autowired
+    private ISysUserService userService;
+
     @Override
     public SkiCourse selectSkiCourseById(Long id) {
-        return skiCourseMapper.selectById(id);
+        SkiCourse course = skiCourseMapper.selectById(id);
+        fillCoachName(course);
+        return course;
     }
 
     @Override
@@ -44,7 +52,25 @@ public class SkiCourseServiceImpl implements ISkiCourseService {
             // 默认只查询正常状态的课程
             wrapper.eq(SkiCourse::getStatus, "0");
         }
-        return skiCourseMapper.selectList(wrapper);
+        List<SkiCourse> list = skiCourseMapper.selectList(wrapper);
+        list.forEach(this::fillCoachName);
+        return list;
+    }
+
+    /**
+     * 填充教练姓名
+     */
+    private void fillCoachName(SkiCourse course) {
+        if (course != null && course.getCoachId() != null) {
+            try {
+                SysUser user = userService.selectUserById(course.getCoachId());
+                if (user != null) {
+                    course.setCoachName(StringUtils.isNotBlank(user.getNickName()) ? user.getNickName() : user.getUserName());
+                }
+            } catch (Exception e) {
+                // 忽略用户查询异常
+            }
+        }
     }
 
     @Override

@@ -58,6 +58,9 @@
         <el-form-item label="课程名称">
           <span>{{ course.courseName }}</span>
         </el-form-item>
+        <el-form-item label="授课教练" v-if="course.coachName">
+          <span>{{ course.coachName }}</span>
+        </el-form-item>
         <el-form-item label="课程日期">
           <span>{{ formatDate(selectedSchedule.scheduleDate) }}</span>
         </el-form-item>
