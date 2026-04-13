@@ -65,43 +65,59 @@
         </el-row>
       </div>
 
-      <!-- 推荐教练区域 -->
-      <div class="recommendation-section" v-if="recommendedCoaches.length > 0">
-        <el-divider>
-          <el-icon><Star /></el-icon>
-          <span style="font-weight: bold; color: #409EFF;">为您推荐</span>
-        </el-divider>
-        <div class="recommendation-tip">
-          <el-alert
-            :closable="false"
-            type="info"
-            show-icon
-          >
-            <template #title>
-              <span>基于协同过滤算法，为您推荐可能感兴趣的教练</span>
-            </template>
-          </el-alert>
+      <!-- 协同过滤推荐区：与下方「全部教练」视觉分区 + 可解释抽屉 -->
+      <div class="recommendation-zone" v-if="recommendedCoaches.length > 0">
+        <div class="recommendation-zone-inner">
+          <div class="recommendation-zone-head">
+            <div class="recommendation-zone-title-block">
+              <el-icon class="recommendation-zone-icon"><Cpu /></el-icon>
+              <div class="recommendation-zone-text">
+                <div class="recommendation-zone-heading">
+                  <span class="recommendation-zone-h3">协同过滤 · 为您推荐</span>
+                  <el-tag type="primary" effect="plain" size="small">算法排序</el-tag>
+                </div>
+                <p class="recommendation-zone-sub">
+                  以下排序由协同过滤算法生成，与下方默认列表不同。
+                </p>
+              </div>
+            </div>
+            <el-button type="primary" plain @click="cfExplainVisible = true">
+              <el-icon class="btn-icon"><QuestionFilled /></el-icon>
+              推荐分怎么来的？（流程 + 图表 + 名次表）
+            </el-button>
+          </div>
+          <el-row :gutter="20" class="recommendation-cards-row">
+            <el-col
+              v-for="(coach, idx) in recommendedCoaches"
+              :key="coach.coachId"
+              :xs="24"
+              :sm="12"
+              :md="8"
+              :lg="6"
+              class="recommendation-col"
+            >
+              <CoachCard
+                :coach="convertRecommendationToCoach(coach)"
+                :show-recommendation="true"
+                :recommendation-rank="idx + 1"
+                :recommendation-score="coach.recommendationScore"
+                :recommendation-reason="coach.recommendationReason"
+                @view-detail="handleViewDetail"
+              />
+            </el-col>
+          </el-row>
         </div>
-        <el-row :gutter="20" style="margin-top: 20px">
-          <el-col
-            v-for="coach in recommendedCoaches"
-            :key="coach.coachId"
-            :xs="24"
-            :sm="12"
-            :md="8"
-            :lg="6"
-            style="margin-bottom: 20px"
-          >
-            <CoachCard 
-              :coach="convertRecommendationToCoach(coach)" 
-              :show-recommendation="true"
-              :recommendation-score="coach.recommendationScore"
-              :recommendation-reason="coach.recommendationReason"
-              @view-detail="handleViewDetail" 
-            />
-          </el-col>
-        </el-row>
-        <el-divider />
+      </div>
+
+      <!-- 与推荐区的分界：强调「全部教练」非协同过滤排序 -->
+      <div v-if="recommendedCoaches.length > 0" class="all-coaches-boundary">
+        <div class="boundary-line" />
+        <div class="boundary-content">
+          <el-icon><UserFilled /></el-icon>
+          <span class="boundary-title">全部教练列表</span>
+          <span class="boundary-hint">以下为查询与筛选结果，排序规则与上方协同过滤推荐区不同</span>
+        </div>
+        <div class="boundary-line" />
       </div>
 
       <!-- 统计信息 -->
@@ -175,14 +191,20 @@
       v-model="detailDialogVisible"
       :coach="selectedCoach"
     />
+
+    <CollaborativeFilteringExplainDrawer
+      v-model="cfExplainVisible"
+      :coaches="recommendedCoaches"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { Search, Refresh, UserFilled, Star } from '@element-plus/icons-vue'
+import { Search, Refresh, UserFilled, Cpu, QuestionFilled } from '@element-plus/icons-vue'
 import CoachCard from './components/CoachCard.vue'
 import CoachDetailDialog from './components/CoachDetailDialog.vue'
+import CollaborativeFilteringExplainDrawer from './components/CollaborativeFilteringExplainDrawer.vue'
 import { listCoachInfo } from '@/api/coachInfo'
 import { getCoachRecommendations } from '@/api/coachRecommendation'
 
@@ -193,6 +215,7 @@ const detailDialogVisible = ref(false)
 const selectedCoach = ref(null)
 const recommendedCoaches = ref([])
 const loadingRecommendations = ref(false)
+const cfExplainVisible = ref(false)
 
 const queryParams = reactive({
   pageNum: 1,
@@ -369,5 +392,129 @@ onMounted(() => {
   margin-top: 30px;
   display: flex;
   justify-content: center;
+}
+
+/* —— 协同过滤推荐区：与「全部教练」强视觉对比 —— */
+.recommendation-zone {
+  margin-bottom: 28px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ecf5ff 0%, #f0f9ff 45%, #fafcff 100%);
+  border: 1px solid #c6e2ff;
+  box-shadow: 0 4px 16px rgba(64, 158, 255, 0.12);
+  position: relative;
+  overflow: hidden;
+}
+
+.recommendation-zone::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  background: linear-gradient(180deg, #409eff 0%, #79bbff 50%, #a0cfff 100%);
+  border-radius: 12px 0 0 12px;
+}
+
+.recommendation-zone-inner {
+  padding: 20px 20px 12px 24px;
+}
+
+.recommendation-zone-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.recommendation-zone-title-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.recommendation-zone-icon {
+  font-size: 36px;
+  color: #409eff;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.recommendation-zone-text {
+  min-width: 0;
+}
+
+.recommendation-zone-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.recommendation-zone-h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #303133;
+  letter-spacing: 0.02em;
+}
+
+.recommendation-zone-sub {
+  margin: 0;
+  font-size: 13px;
+  color: #606266;
+  line-height: 1.6;
+  max-width: 640px;
+}
+
+.recommendation-cards-row {
+  margin-top: 4px;
+}
+
+.recommendation-col {
+  margin-bottom: 20px;
+}
+
+.recommendation-zone-head .btn-icon {
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* 全部教练分界条 */
+.all-coaches-boundary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 8px 0 24px;
+  flex-wrap: wrap;
+}
+
+.all-coaches-boundary .boundary-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #dcdfe6 15%, #dcdfe6 85%, transparent);
+  min-width: 40px;
+}
+
+.boundary-content {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+  color: #909399;
+}
+
+.boundary-title {
+  font-weight: 600;
+  color: #606266;
+}
+
+.boundary-hint {
+  color: #a8abb2;
 }
 </style>

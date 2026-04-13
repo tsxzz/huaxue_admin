@@ -45,37 +45,60 @@ public class FinancialStatisticsServiceImpl implements IFinancialStatisticsServi
     @Override
     public FinancialStatisticsDTO getFinancialStatistics(Date startDate, Date endDate) {
         FinancialStatisticsDTO statistics = new FinancialStatisticsDTO();
+
+        // 日期是前端按 yyyy-MM-dd 传入，默认会落在 00:00:00。
+        // 为避免 <= endDate 时把 endDate 当天后半段数据漏掉，这里统一调整为当日全时间范围。
+        Date effectiveStartDate = startDate;
+        Date effectiveEndDate = endDate;
+        if (effectiveStartDate != null) {
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(effectiveStartDate);
+            cal.set(Calendar.HOUR_OF_DAY, 0);
+            cal.set(Calendar.MINUTE, 0);
+            cal.set(Calendar.SECOND, 0);
+            cal.set(Calendar.MILLISECOND, 0);
+            effectiveStartDate = cal.getTime();
+        }
+        if (effectiveEndDate != null) {
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(effectiveEndDate);
+            cal.set(Calendar.HOUR_OF_DAY, 23);
+            cal.set(Calendar.MINUTE, 59);
+            cal.set(Calendar.SECOND, 59);
+            cal.set(Calendar.MILLISECOND, 999);
+            effectiveEndDate = cal.getTime();
+        }
         
         // 查询门票订单（已支付状态：1）
         LambdaQueryWrapper<SkiTicketOrder> ticketWrapper = Wrappers.lambdaQuery();
         ticketWrapper.eq(SkiTicketOrder::getOrderStatus, "1"); // 已支付
-        if (startDate != null) {
-            ticketWrapper.ge(SkiTicketOrder::getPaymentTime, startDate);
+        if (effectiveStartDate != null) {
+            ticketWrapper.ge(SkiTicketOrder::getPaymentTime, effectiveStartDate);
         }
-        if (endDate != null) {
-            ticketWrapper.le(SkiTicketOrder::getPaymentTime, endDate);
+        if (effectiveEndDate != null) {
+            ticketWrapper.le(SkiTicketOrder::getPaymentTime, effectiveEndDate);
         }
         List<SkiTicketOrder> ticketOrders = ticketOrderMapper.selectList(ticketWrapper);
         
         // 查询租赁订单（已支付状态：1租赁中 或 2已归还）
         LambdaQueryWrapper<SkiEquipmentRental> rentalWrapper = Wrappers.lambdaQuery();
         rentalWrapper.in(SkiEquipmentRental::getStatus, Arrays.asList(1, 2)); // 租赁中或已归还
-        if (startDate != null) {
-            rentalWrapper.ge(SkiEquipmentRental::getRentalStartTime, startDate);
+        if (effectiveStartDate != null) {
+            rentalWrapper.ge(SkiEquipmentRental::getRentalStartTime, effectiveStartDate);
         }
-        if (endDate != null) {
-            rentalWrapper.le(SkiEquipmentRental::getRentalStartTime, endDate);
+        if (effectiveEndDate != null) {
+            rentalWrapper.le(SkiEquipmentRental::getRentalStartTime, effectiveEndDate);
         }
         List<SkiEquipmentRental> rentals = equipmentRentalMapper.selectList(rentalWrapper);
         
         // 查询教练课程预约（已支付状态：1）
         LambdaQueryWrapper<SkiCourseAppointment> courseWrapper = Wrappers.lambdaQuery();
         courseWrapper.eq(SkiCourseAppointment::getPaymentStatus, "1"); // 已支付
-        if (startDate != null) {
-            courseWrapper.ge(SkiCourseAppointment::getPaymentTime, startDate);
+        if (effectiveStartDate != null) {
+            courseWrapper.ge(SkiCourseAppointment::getPaymentTime, effectiveStartDate);
         }
-        if (endDate != null) {
-            courseWrapper.le(SkiCourseAppointment::getPaymentTime, endDate);
+        if (effectiveEndDate != null) {
+            courseWrapper.le(SkiCourseAppointment::getPaymentTime, effectiveEndDate);
         }
         List<SkiCourseAppointment> courseAppointments = courseAppointmentMapper.selectList(courseWrapper);
         
@@ -86,7 +109,7 @@ public class FinancialStatisticsServiceImpl implements IFinancialStatisticsServi
         
         // 计算租赁收入
         BigDecimal rentalRevenue = rentals.stream()
-            .map(rental -> rental.getPaidAmount() != null ? rental.getPaidAmount() : BigDecimal.ZERO)
+            .map(this::getRentalRevenueAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         
         // 计算教练课程总收入
@@ -177,7 +200,7 @@ public class FinancialStatisticsServiceImpl implements IFinancialStatisticsServi
                     return dto;
                 });
                 FinancialStatisticsDTO.DailyRevenueDTO dto = dailyMap.get(date);
-                BigDecimal amount = rental.getPaidAmount() != null ? rental.getPaidAmount() : BigDecimal.ZERO;
+                BigDecimal amount = getRentalRevenueAmount(rental);
                 dto.setRentalAmount(dto.getRentalAmount().add(amount));
                 dto.setTotalAmount(dto.getTotalAmount().add(amount));
             }
@@ -260,7 +283,7 @@ public class FinancialStatisticsServiceImpl implements IFinancialStatisticsServi
                     return dto;
                 });
                 FinancialStatisticsDTO.MonthlyRevenueDTO dto = monthlyMap.get(month);
-                BigDecimal amount = rental.getPaidAmount() != null ? rental.getPaidAmount() : BigDecimal.ZERO;
+                BigDecimal amount = getRentalRevenueAmount(rental);
                 dto.setRentalAmount(dto.getRentalAmount().add(amount));
                 dto.setTotalAmount(dto.getTotalAmount().add(amount));
             }
@@ -358,5 +381,22 @@ public class FinancialStatisticsServiceImpl implements IFinancialStatisticsServi
         }
         
         return new ArrayList<>(methodMap.values());
+    }
+
+    /**
+     * 租赁收入金额取值规则：
+     * 1) 如果 paidAmount 有值且大于 0，优先用 paidAmount；
+     * 2) 否则回退用 totalAmount（避免 paidAmount 长期为 0 导致统计为 0）。
+     */
+    private BigDecimal getRentalRevenueAmount(SkiEquipmentRental rental) {
+        if (rental == null) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal paid = rental.getPaidAmount();
+        if (paid != null && paid.compareTo(BigDecimal.ZERO) > 0) {
+            return paid;
+        }
+        BigDecimal total = rental.getTotalAmount();
+        return total != null ? total : BigDecimal.ZERO;
     }
 }

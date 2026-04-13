@@ -5,8 +5,9 @@
     shadow="hover" 
     @click="handleCardClick"
   >
-    <!-- 推荐标签 -->
+    <!-- 推荐标签 + 协同过滤推荐名次 -->
     <div class="recommendation-badge" v-if="showRecommendation">
+      <span v-if="recommendationRank" class="rank-pill">第{{ recommendationRank }}名</span>
       <el-icon><Star /></el-icon>
       <span>推荐</span>
       <el-tooltip v-if="recommendationReason" :content="recommendationReason" placement="top">
@@ -97,6 +98,11 @@ const props = defineProps({
   recommendationReason: {
     type: String,
     default: ''
+  },
+  /** 协同过滤推荐区内的排序名次（从 1 开始） */
+  recommendationRank: {
+    type: Number,
+    default: null
   }
 })
 
@@ -309,7 +315,7 @@ const handleViewDetail = () => {
   right: 10px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   padding: 4px 12px;
   background: linear-gradient(135deg, #409eff 0%, #67c23a 100%);
   color: white;
@@ -318,6 +324,14 @@ const handleViewDetail = () => {
   font-weight: 600;
   z-index: 10;
   box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
+}
+
+.recommendation-badge .rank-pill {
+  background: rgba(255, 255, 255, 0.25);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .recommendation-badge .info-icon {

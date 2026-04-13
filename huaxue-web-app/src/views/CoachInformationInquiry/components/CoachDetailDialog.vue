@@ -2,7 +2,7 @@
   <el-dialog
     v-model="visible"
     title="教练详细信息"
-    width="800px"
+    width="920px"
     :close-on-click-modal="false"
   >
     <div class="coach-detail" v-if="coach">
@@ -85,6 +85,50 @@
         </div>
       </el-card>
 
+      <!-- 开设课程（可预约） -->
+      <el-card class="detail-section" shadow="never">
+        <template #header>
+          <div class="section-header section-header-row">
+            <div class="section-title">
+              <el-icon><Reading /></el-icon>
+              <span>开设课程</span>
+            </div>
+            <el-button
+              v-if="coachUserId"
+              link
+              type="primary"
+              @click="goCoachAppointmentPage"
+            >
+              教练预约页筛选该教练
+            </el-button>
+          </div>
+        </template>
+        <div v-loading="coursesLoading">
+          <el-empty
+            v-if="!coursesLoading && coachCourses.length === 0"
+            description="该教练暂未开设可预约课程"
+            :image-size="80"
+          />
+          <el-table v-else :data="coachCourses" border size="small" max-height="320">
+            <el-table-column prop="courseName" label="课程名称" min-width="140" show-overflow-tooltip />
+            <el-table-column prop="courseType" label="类型" width="100" align="center" />
+            <el-table-column prop="duration" label="时长(分)" width="90" align="center" />
+            <el-table-column label="价格" width="90" align="right">
+              <template #default="scope">
+                ¥{{ scope.row.price }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="120" align="center" fixed="right">
+              <template #default="scope">
+                <el-button type="primary" size="small" @click="openBookCourse(scope.row)">
+                  预约
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </el-card>
+
       <!-- 统计数据 -->
       <el-card class="detail-section" shadow="never">
         <template #header>
@@ -139,11 +183,21 @@
       <el-button @click="handleClose">关闭</el-button>
     </template>
   </el-dialog>
+
+  <ScheduleDialog
+    v-model="scheduleVisible"
+    :course="currentCourse"
+    @appointment-success="handleAppointmentSuccess"
+  />
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
-import { User, List, Document, Trophy, CircleCheck, DataAnalysis } from '@element-plus/icons-vue'
+import { ref, watch, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { User, List, Document, Trophy, CircleCheck, DataAnalysis, Reading } from '@element-plus/icons-vue'
+import { publicListCourse } from '@/api/course'
+import ScheduleDialog from '@/views/CoachAppointment/components/ScheduleDialog.vue'
 
 const props = defineProps({
   modelValue: {
@@ -159,9 +213,68 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const visible = ref(false)
+const router = useRouter()
+
+const coachCourses = ref([])
+const coursesLoading = ref(false)
+const scheduleVisible = ref(false)
+const currentCourse = ref(null)
+
+/** 课程表的 coachId 对应 sys_user 的用户 ID，与教练信息里的 userId 一致 */
+const coachUserId = computed(() => {
+  if (!props.coach) return null
+  return props.coach.userId ?? props.coach.user?.userId ?? null
+})
+
+const loadCoachCourses = async () => {
+  const uid = coachUserId.value
+  if (!uid) {
+    coachCourses.value = []
+    return
+  }
+  coursesLoading.value = true
+  try {
+    const res = await publicListCourse({
+      pageNum: 1,
+      pageSize: 100,
+      coachId: uid
+    })
+    coachCourses.value = res.rows || []
+  } catch (e) {
+    coachCourses.value = []
+    ElMessage.error('加载该教练课程失败')
+  } finally {
+    coursesLoading.value = false
+  }
+}
+
+const openBookCourse = (course) => {
+  currentCourse.value = course
+  scheduleVisible.value = true
+}
+
+const goCoachAppointmentPage = () => {
+  const uid = coachUserId.value
+  if (!uid) return
+  visible.value = false
+  router.push({ path: '/CoachAppointment', query: { coachId: String(uid) } })
+}
+
+const handleAppointmentSuccess = () => {
+  ElMessage.success('预约成功')
+  loadCoachCourses()
+}
 
 watch(() => props.modelValue, (val) => {
   visible.value = val
+  if (val && props.coach) {
+    loadCoachCourses()
+  }
+  if (!val) {
+    coachCourses.value = []
+    scheduleVisible.value = false
+    currentCourse.value = null
+  }
 })
 
 watch(visible, (val) => {
@@ -225,6 +338,17 @@ const handleClose = () => {
   gap: 8px;
   font-weight: 600;
   font-size: 16px;
+}
+
+.section-header-row {
+  justify-content: space-between;
+  width: 100%;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .specialty-content,

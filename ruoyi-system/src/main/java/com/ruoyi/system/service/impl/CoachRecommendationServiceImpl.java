@@ -187,8 +187,9 @@ public class CoachRecommendationServiceImpl implements ICoachRecommendationServi
             Long coachId = dto.getCoachId();
             if (mergedResults.containsKey(coachId)) {
                 CoachRecommendationDTO existing = mergedResults.get(coachId);
+                // 同一教练在用户 CF 中出现多次时累加加权分（首次已乘 0.6）
                 existing.setRecommendationScore(
-                    existing.getRecommendationScore() * 0.6 + dto.getRecommendationScore() * 0.6
+                    existing.getRecommendationScore() + dto.getRecommendationScore() * 0.6
                 );
             } else {
                 dto.setRecommendationScore(dto.getRecommendationScore() * 0.6);
@@ -213,10 +214,37 @@ public class CoachRecommendationServiceImpl implements ICoachRecommendationServi
         }
         
         // 排序并返回TopN
-        return mergedResults.values().stream()
+        List<CoachRecommendationDTO> merged = mergedResults.values().stream()
             .sorted((a, b) -> Double.compare(b.getRecommendationScore(), a.getRecommendationScore()))
             .limit(topN)
             .collect(Collectors.toList());
+        spreadRecommendationScores(merged);
+        return merged;
+    }
+
+    /**
+     * 将推荐分拉开到可视区间：若分数几乎相同（例如双路冷启动均为 0.5），按名次递减；
+     * 否则做 min-max 归一化到 [0.35, 1.0]，便于前端柱状图展示差异。
+     */
+    private void spreadRecommendationScores(List<CoachRecommendationDTO> list) {
+        if (list == null || list.isEmpty()) {
+            return;
+        }
+        double min = list.stream().mapToDouble(d -> d.getRecommendationScore() != null ? d.getRecommendationScore() : 0.0).min().orElse(0.0);
+        double max = list.stream().mapToDouble(d -> d.getRecommendationScore() != null ? d.getRecommendationScore() : 0.0).max().orElse(1.0);
+        if (max - min < 1e-6) {
+            int n = list.size();
+            for (int i = 0; i < n; i++) {
+                double s = (n <= 1) ? 1.0 : 1.0 - i * (0.62 / (n - 1));
+                list.get(i).setRecommendationScore(Math.round(s * 1000.0) / 1000.0);
+            }
+            return;
+        }
+        for (CoachRecommendationDTO dto : list) {
+            double s = dto.getRecommendationScore() != null ? dto.getRecommendationScore() : 0.0;
+            double norm = 0.35 + 0.65 * (s - min) / (max - min);
+            dto.setRecommendationScore(Math.round(norm * 1000.0) / 1000.0);
+        }
     }
     
     @Override
@@ -431,21 +459,28 @@ public class CoachRecommendationServiceImpl implements ICoachRecommendationServi
             }
         }
         
-        return coaches.stream().map(coach -> {
+        List<SkiCoachInfo> coachList = coaches.stream().limit(topN).collect(Collectors.toList());
+        List<CoachRecommendationDTO> out = new ArrayList<>();
+        int n = coachList.size();
+        for (int i = 0; i < n; i++) {
+            SkiCoachInfo coach = coachList.get(i);
             CoachRecommendationDTO dto = new CoachRecommendationDTO();
             dto.setCoachId(coach.getId());
             dto.setUserId(coach.getUserId());
-            dto.setCoachName(coach.getUser() != null ? 
-                (coach.getUser().getNickName() != null && !coach.getUser().getNickName().isEmpty() ? 
+            dto.setCoachName(coach.getUser() != null ?
+                (coach.getUser().getNickName() != null && !coach.getUser().getNickName().isEmpty() ?
                     coach.getUser().getNickName() : coach.getUser().getUserName()) : "");
             dto.setAvatar(coach.getUser() != null ? coach.getUser().getAvatar() : null);
             dto.setCoachLevel(coach.getCoachLevel());
             dto.setSpecialty(coach.getSpecialty());
             dto.setHourlyRate(coach.getHourlyRate());
             dto.setAverageRating(coach.getAverageRating());
-            dto.setRecommendationScore(0.5); // 默认分数
-            dto.setRecommendationReason("热门教练推荐");
-            return dto;
-        }).collect(Collectors.toList());
+            // 冷启动：按热门排序名次递减分数，避免前端柱状图全部为同一高度
+            double score = (n <= 1) ? 1.0 : 1.0 - i * (0.75 / (n - 1));
+            dto.setRecommendationScore(Math.round(score * 1000.0) / 1000.0);
+            dto.setRecommendationReason("热门教练推荐（冷启动）");
+            out.add(dto);
+        }
+        return out;
     }
 }

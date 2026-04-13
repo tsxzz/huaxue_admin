@@ -299,6 +299,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { Calendar, Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { publicListCourse, getCourse } from '@/api/course'
@@ -307,6 +308,7 @@ import { listStudentAppointment, payCourseAppointment, cancelCourseAppointment, 
 import CoachCourseCard from './components/CoachCourseCard.vue'
 import ScheduleDialog from './components/ScheduleDialog.vue'
 
+const route = useRoute()
 const activeTab = ref('courses')
 const loading = ref(false)
 const courseList = ref([])
@@ -535,6 +537,13 @@ const getStatusText = (status) => {
 }
 
 onMounted(() => {
+  const cid = route.query.coachId
+  if (cid != null && cid !== '') {
+    const n = Number(cid)
+    if (!Number.isNaN(n)) {
+      queryParams.coachId = n
+    }
+  }
   loadData()
   loadCoachList()
 })
